@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard IoT - Silo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Font Awesome para ícones -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --accent: #00a86b; /* verde - ajuste conforme preferir */
+      --accent-2: #d4af37; /* dourado para notificação ativa */
+      --card-bg: rgba(255,255,255,0.06);
+      --card-border: rgba(255,255,255,0.08);
+      --text-soft: rgba(255,255,255,0.85);
+    }
+
+    html,body{
+      height:100%;
+      margin:0;
+      font-family: 'Inter', sans-serif;
+      background: url("/static/background.jpg") no-repeat center center fixed;
+      background-size: cover;
+      color: var(--text-soft);
+    }
+
+    /* overlay para legibilidade */
+    .overlay{
+      min-height:100vh;
+      background: rgba(0,0,0,0.55);
+      padding: 18px;
+    }
+
+    /* navbar-like top bar */
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:18px;
+    }
+
+    .brand{
+      color: var(--accent);
+      font-weight:700;
+      font-size:1.4rem;
+      letter-spacing:0.5px;
+    }
+
+    .top-actions{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+
+    .action-btn{
+      background: transparent;
+      border: 1px solid var(--card-border);
+      color: var(--text-soft);
+      padding: 8px 12px;
+      border-radius:8px;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+    }
+    .action-btn .fa { font-size:1.05rem; }
+
+    /* Bell states */
+    .bell {
+      position: relative;
+      font-size: 1.2rem;
+      padding: 8px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width:44px;
+      height:44px;
+    }
+    .bell.inactive {
+      filter: grayscale(100%);
+      background: rgba(255,255,255,0.03);
+      border:1px solid rgba(255,0,0,0.25);
+    }
+    /* red strike */
+    .bell.inactive::after{
+      content: "";
+      position:absolute;
+      left:6px;
+      right:6px;
+      top:calc(50% - 1px);
+      height:2px;
+      background: rgba(255,0,0,0.9);
+      transform: rotate(-12deg);
+      border-radius:2px;
+    }
+    .bell.active {
+      color: var(--accent-2);
+      background: rgba(212,175,55,0.08);
+      border:1px solid rgba(212,175,55,0.18);
+    }
+
+    /* user card */
+    .user-card{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:8px 12px;
+      border-radius:12px;
+      background: var(--card-bg);
+      border:1px solid var(--card-border);
+    }
+    .avatar{
+      width:40px;
+      height:40px;
+      border-radius:50%;
+      background: linear-gradient(180deg,#e6e6e6, #cfcfcf);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:#333;
+      font-weight:700;
+      font-size:0.9rem;
+      overflow:hidden;
+    }
+
+    /* main content area */
+    .content {
+      display:flex;
+      gap:18px;
+      align-items:flex-start;
+    }
+
+    /* left column metrics */
+    .left-col{
+      width:340px; /* fixed width for the metrics column */
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border:1px solid var(--card-border);
+      border-radius:12px;
+      padding:14px;
+      color:var(--text-soft);
+    }
+
+    .metric-title{
+      font-size:0.9rem;
+      color: #cfd8dc;
+      margin-bottom:8px;
+    }
+    .metric-value{
+      font-size:2.1rem;
+      font-weight:700;
+      color:var(--accent);
+    }
+    .small {
+      font-size:0.9rem;
+      color:#bfc7c9;
+    }
+
+    /* right: graphs area */
+    .right-col{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+    }
+
+    .graphs-row{
+      display:flex;
+      gap:16px;
+    }
+    .graph-card{
+      flex:1;
+      border-radius:10px;
+      padding:8px;
+      background: rgba(255,255,255,0.02);
+    }
+
+    footer{
+      margin-top:18px;
+      text-align:center;
+      color:#b7bfc1;
+      font-size:0.9rem;
+    }
+
+    /* Responsividade */
+    @media (max-width: 992px){
+      .content { flex-direction: column; }
+      .left-col { width:100%; }
+      .graphs-row { flex-direction: column; }
+    }
+
+  </style>
+</head>
+<body>
+  <div class="overlay">
+    <div class="container-fluid">
+      <div class="topbar">
+        <div class="brand">Dashboard de Monitoramento - Silos</div>
+
+        <div class="top-actions">
+          <button class="action-btn" id="static-settings">
+            <i class="fa fa-gear"></i>
+            <span class="d-none d-md-inline">Configurações</span>
+          </button>
+
+          <button class="action-btn bell inactive" id="notify-btn" title="Notificações">
+            <i class="fa fa-bell"></i>
+          </button>
+
+          <div class="user-card">
+            <div class="avatar" aria-hidden="true">A</div>
+            <div style="min-width:140px;">
+              <div style="font-weight:600;">Administrador</div>
+              <div class="small">Usuário</div>
+            </div>
+            <div class="dropdown ms-2">
+              <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Opções</button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="#" id="menu-alert">Alertas</a></li>
+                <li><a class="dropdown-item" href="#" id="menu-config">Configurações</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="#" id="menu-logout">Logout</a></li>
+                <li><a class="dropdown-item" href="#" id="menu-update">Atualizar</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <!-- LEFT: indicadores e controles -->
+        <div class="left-col">
+          <div class="card">
+            <div class="metric-title">Último Registro</div>
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <div class="metric-value">{{ last_temp }} °C</div>
+                <div class="small">Temperatura atual</div>
+              </div>
+              <div>
+                <div class="metric-value">{{ last_umidade }} %</div>
+                <div class="small">Umidade atual</div>
+              </div>
+            </div>
+            <div class="small mt-3">Última atualização: {{ last_update }}</div>
+          </div>
+
+          <div class="card">
+            <div class="metric-title">Indicadores - Tendência</div>
+            <div class="row text-center">
+              <div class="col-6">
+                <div class="small">Média Temp</div>
+                <div style="font-weight:700; font-size:1.15rem;">{{ avg_temp }}</div>
+                <div class="small">Min: {{ min_temp }} / Max: {{ max_temp }}</div>
+              </div>
+              <div class="col-6">
+                <div class="small">Média Umid</div>
+                <div style="font-weight:700; font-size:1.15rem;">{{ avg_umid }}</div>
+                <div class="small">Min: {{ min_umid }} / Max: {{ max_umid }}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <div class="metric-title">Notificações</div>
+                <div class="small">Gerencie como deseja receber alertas</div>
+              </div>
+              <div>
+                <button class="action-btn" id="open-notify-modal">
+                  Gerenciar
+                </button>
+              </div>
+            </div>
+
+            <div class="mt-3">
+              <button class="btn btn-outline-light w-100" id="example-alert-btn">Exemplo Alerta Pop-up</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: gráficos lado a lado -->
+        <div class="right-col">
+          <div class="graphs-row">
+            <div class="graph-card card">
+              <!-- grafico temperatura -->
+              {{ temp_plot | safe }}
+            </div>
+
+            <div class="graph-card card">
+              <!-- grafico umidade -->
+              {{ umidade_plot | safe }}
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="metric-title">Observações Operacionais</div>
+            <div class="small">
+              Monitorar temperatura e umidade dos silos é crítico para prevenir fermentação, perda de qualidade e risco de autoaquecimento. 
+              Ajuste ventilação e períodos de rechecagem sempre que os valores estiverem fora da faixa operacional recomendada.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>Desenvolvido com Flask, ThingSpeak e Plotly.</footer>
+    </div>
+  </div>
+
+  <!-- Modal: Gerenciar Notificações -->
+  <div class="modal fade" id="notifyModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content" style="background: rgba(20,20,20,0.95); color:var(--text-soft); border-radius:10px; border:1px solid var(--card-border);">
+        <div class="modal-header">
+          <h5 class="modal-title">Notificações</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <p class="small">Escolha por onde deseja receber alertas:</p>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="telegram" id="chkTelegram">
+            <label class="form-check-label" for="chkTelegram">Telegram</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="sms" id="chkSMS">
+            <label class="form-check-label" for="chkSMS">SMS</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="popup" id="chkPopup">
+            <label class="form-check-label" for="chkPopup">Alerta Pop-up</label>
+          </div>
+
+          <hr style="border-color: rgba(255,255,255,0.06)">
+
+          <div class="mt-2">
+            <button class="btn btn-outline-light" id="example-inline-alert">Exemplo Alerta Pop-up</button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-light" data-bs-dismiss="modal">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Exemplo Alerta -->
+  <div class="modal fade" id="exampleAlertModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content" style="background: rgba(25,25,25,0.98); color:var(--text-soft); border-radius:10px; border:1px solid var(--card-border);">
+        <div class="modal-header">
+          <div style="display:flex; gap:10px; align-items:center;">
+            <div class="avatar" style="width:46px;height:46px;">A</div>
+            <div>
+              <div style="font-weight:700;">Administrador</div>
+              <div class="small">Alerta crítico</div>
+            </div>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <h5 style="color: #f3a22a;">Atenção: Silo em risco</h5>
+          <p class="small">
+            Detectamos que a Umidade e/ou Temperatura encontram-se fora dos padrões recomendados. Em silos de soja, níveis elevados de umidade
+            ou temperatura podem causar fermentação, perda de qualidade e risco de aquecimento. Verifique ventilação, sistema de aeração e execute amostragem imediata.
+          </p>
+
+          <ul class="small">
+            <li>Procedimento sugerido: revisar ventilação e realizar amostragem em diferentes profundidades do silo.</li>
+            <li>Risco: fermentação e perda de grão.</li>
+          </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- plotly core lib (temp_plot already included script via to_html include_plotlyjs=cdn once) -->
+  <script>
+    (function(){
+      const notifyBtn = document.getElementById('notify-btn');
+      const notifyModal = new bootstrap.Modal(document.getElementById('notifyModal'));
+      const exampleModal = new bootstrap.Modal(document.getElementById('exampleAlertModal'));
+
+      let active = false; // estado local do sino
+      function updateBellUI(){
+        if(active){
+          notifyBtn.classList.remove('inactive');
+          notifyBtn.classList.add('active');
+        } else {
+          notifyBtn.classList.remove('active');
+          notifyBtn.classList.add('inactive');
+        }
+      }
+      updateBellUI();
+
+      // abrir modal ao clicar no sino
+      notifyBtn.addEventListener('click', function(){
+        // toggle estado visual (apenas UI) e abrir modal
+        active = !active;
+        updateBellUI();
+        notifyModal.show();
+      });
+
+      // botao na coluna "Gerenciar"
+      document.getElementById('open-notify-modal').addEventListener('click', function(){
+        notifyModal.show();
+      });
+
+      // botão "Exemplo Alerta Pop-up"
+      document.getElementById('example-alert-btn').addEventListener('click', function(){
+        exampleModal.show();
+      });
+      document.getElementById('example-inline-alert').addEventListener('click', function(){
+        notifyModal.hide();
+        exampleModal.show();
+      });
+
+      // dropdown items (simples placeholders)
+      document.getElementById('menu-logout').addEventListener('click', function(){
+        alert('Logout acionado (placeholder).');
+      });
+      document.getElementById('menu-update').addEventListener('click', function(){
+        location.reload();
+      });
+      document.getElementById('menu-alert').addEventListener('click', function(){
+        notifyModal.show();
+      });
+      document.getElementById('menu-config').addEventListener('click', function(){
+        alert('Abrir configurações (placeholder).');
+      });
+
+      // botões do modal de alerta
+      document.getElementById('btn-logout').addEventListener('click', function(){
+        alert('Logout (placeholder).');
+        exampleModal.hide();
+      });
+      document.getElementById('btn-update').addEventListener('click', function(){
+        location.reload();
+      });
+      document.getElementById('btn-config').addEventListener('click', function(){
+        alert('Ir para configurações (placeholder).');
+      });
+
+    })();
+  </script>
+</body>
+</html>
